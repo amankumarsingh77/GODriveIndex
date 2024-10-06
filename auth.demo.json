@@ -1,0 +1,44 @@
+{
+    "siteName": "Google Drive Index",
+    "client_id": "",
+    "client_secret": "",
+    "refresh_token": "",
+    "service_account": true,
+    "service_account_json": "",
+    "files_list_page_size": 100,
+    "search_result_list_page_size": 100,
+    "enable_cors_file_down": false,
+    "enable_password_file_verify": false,
+    "direct_link_protection": false,
+    "disable_anonymous_download": false,
+    "file_link_expiry": 7,
+    "search_all_drives": true,
+    "enable_login": false,
+    "enable_signup": false,
+    "enable_social_login": false,
+    "google_client_id_for_login": "",
+    "google_client_secret_for_login": "",
+    "redirect_domain": "",
+    "login_database": "Local",
+    "login_days": 7,
+    "enable_ip_lock": false,
+    "single_session": false,
+    "ip_changed_action": false,
+    "users_list": [
+        {
+            "username": "admin",
+            "password": "admin"
+        },
+        {
+            "username": "admin1",
+            "password": "admin1"
+        }
+    ],
+    "roots": [
+        {
+            "id": "",
+            "name": "00-MUST-HAVE",
+            "protect_file_link": false
+        }
+    ]
+}
