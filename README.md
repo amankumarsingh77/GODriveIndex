@@ -54,7 +54,6 @@ Whether you're managing a large collection of files or need a reliable way to ac
 
 👉 **Secure Authentication**: Utilize OAuth 2.0 for safe and authorized access to Google Drive.
 
-👉 **User-Friendly Interface**: A clean and intuitive web interface for easy navigation and file management.
 
 NOTE: MANY FEATURES ARE STILL UNDER DEVELOPMENT.
 
