@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/amankumarsingh77/google_drive_index/internal/config"
+	"github.com/amankumarsingh77/google_drive_index/internal/drive"
 	"github.com/amankumarsingh77/google_drive_index/internal/utils"
 )
 
@@ -25,7 +26,7 @@ func HandleGenerateDownloadLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := GenerateDownloadToken(requestData.FileID, time.Duration(config.Auth.FileLinkExpiry)*time.Hour)
+	token := drive.GenerateDownloadToken(requestData.FileID, time.Duration(config.Auth.FileLinkExpiry)*time.Hour)
 
 	encryptedFileID, err := utils.EncryptString(requestData.FileID)
 	if err != nil {

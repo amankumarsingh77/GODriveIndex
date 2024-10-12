@@ -18,10 +18,11 @@ func main() {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", middleware.AuthMiddleware(handlers.HandleHome))
-	r.HandleFunc("/login", handlers.HandleLogin)
+
 	r.HandleFunc("/search", middleware.AuthMiddleware(handlers.HandleSearch))
 	r.HandleFunc("/download/{id:.+}", handlers.HandleDownload).Queries("token", "{token}")
-	r.HandleFunc("/api", middleware.AuthMiddleware(handlers.HandleAPI)).Methods("POST")
+	r.HandleFunc("/list-files", middleware.AuthMiddleware(handlers.HandleListDriveContents)).Methods("POST")
+	r.HandleFunc("/auth/callback", handlers.HandleAuthCallback).Methods("GET")
 	r.HandleFunc("/generate-download-link", middleware.AuthMiddleware(handlers.HandleGenerateDownloadLink)).Methods("POST")
 
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web/static"))))

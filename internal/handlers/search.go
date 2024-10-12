@@ -20,6 +20,7 @@ func HandleSearch(w http.ResponseWriter, r *http.Request) {
 		Q         string `json:"q"`
 		PageToken string `json:"page_token"`
 		PageIndex int    `json:"page_index"`
+		Limit     int    `json:"limit"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
@@ -37,6 +38,11 @@ func HandleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// gd, err := drive.NewGoogleDriveWithServiceAccount()
+	// if err != nil {
+	// 	http.Error(w, "Failed to initialize Google Drive client", http.StatusInternalServerError)
+	// 	return
+	// }
 	gd, err := drive.NewGoogleDrive(config.Auth.ClientID, config.Auth.ClientSecret, config.Auth.RefreshToken)
 	if err != nil {
 		http.Error(w, "Failed to initialize Google Drive client", http.StatusInternalServerError)
@@ -52,7 +58,7 @@ func HandleSearch(w http.ResponseWriter, r *http.Request) {
 
 	params := map[string]string{
 		"q":        query,
-		"fields":   "nextPageToken, files(id, driveId, name, mimeType, size, modifiedTime)",
+		"fields":   "nextPageToken, files(id, driveId, parents, name, mimeType, size, modifiedTime)",
 		"pageSize": fmt.Sprintf("%d", config.Auth.SearchResultListPageSize),
 		"orderBy":  "folder,name,modifiedTime desc",
 	}

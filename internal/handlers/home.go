@@ -16,10 +16,8 @@ func HandleHome(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		SiteName string
-		Theme    string
 	}{
 		SiteName: config.Auth.SiteName,
-		Theme:    config.UI.Theme,
 	}
 
 	err = tmpl.Execute(w, data)

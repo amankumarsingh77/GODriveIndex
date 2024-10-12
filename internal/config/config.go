@@ -7,15 +7,13 @@ import (
 )
 
 var (
-	Auth   AuthConfig
-	UI     UIConfig
-	Player PlayerConfig
+	Auth AuthConfig
+	SAS  []ServiceAccount
 )
 
 func LoadConfig() {
 	loadJSONConfig("auth.json", &Auth)
-	// loadJSONConfig("config/ui.json", &UI)
-	// loadJSONConfig("config/player.json", &Player)
+	loadJSONConfig("serviceAccount.json", &SAS)
 }
 
 func loadJSONConfig(filename string, config interface{}) {

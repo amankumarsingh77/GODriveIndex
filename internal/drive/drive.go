@@ -2,11 +2,17 @@ package drive
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
+	"math/rand"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/amankumarsingh77/google_drive_index/internal/config"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
@@ -19,6 +25,20 @@ type GoogleDrive struct {
 	config  *oauth2.Config
 }
 
+func GetRandomServiceAccount() (*config.ServiceAccount, error) {
+	if len(config.SAS) == 0 {
+		return nil, fmt.Errorf("no service accounts configured")
+	}
+
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	randomIndex := r.Intn(len(config.SAS))
+	selectedAccount := config.SAS[randomIndex]
+
+	log.Printf("Selected service account: %s (index: %d)", selectedAccount.ClientEmail, randomIndex)
+
+	return &selectedAccount, nil
+}
+
 func NewGoogleDrive(clientID, clientSecret, refreshToken string) (*GoogleDrive, error) {
 	config := &oauth2.Config{
 		ClientID:     clientID,
@@ -27,9 +47,11 @@ func NewGoogleDrive(clientID, clientSecret, refreshToken string) (*GoogleDrive, 
 		Scopes:       []string{drive.DriveScope},
 	}
 
-	token := &oauth2.Token{
-		RefreshToken: refreshToken,
-	}
+	// token := &oauth2.Token{
+	// 	RefreshToken: refreshToken,
+	// }
+	tokFile := "token.json"
+	token, _ := tokenFromFile(tokFile)
 
 	client := config.Client(context.Background(), token)
 
@@ -41,6 +63,28 @@ func NewGoogleDrive(clientID, clientSecret, refreshToken string) (*GoogleDrive, 
 	return &GoogleDrive{
 		service: srv,
 		config:  config,
+	}, nil
+}
+
+func NewGoogleDriveWithServiceAccount() (*GoogleDrive, error) {
+	serviceAccount, err := GetRandomServiceAccount()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get random service account: %v", err)
+	}
+
+	serviceAccountJSON, err := json.Marshal(serviceAccount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal service account: %v", err)
+	}
+
+	ctx := context.Background()
+	driveService, err := drive.NewService(ctx, option.WithCredentialsJSON(serviceAccountJSON))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Google Drive service: %v", err)
+	}
+
+	return &GoogleDrive{
+		service: driveService,
 	}, nil
 }
 
@@ -65,18 +109,19 @@ func (gd *GoogleDrive) GetFile(fileID string) (*drive.File, error) {
 func (gd *GoogleDrive) SearchFiles(params map[string]string) (*drive.FileList, error) {
 	call := gd.service.Files.List()
 
-	if q, ok := params["q"]; ok {
-		call = call.Q(q)
+	if query, ok := params["q"]; ok && query != "" {
+		call = call.Q(query)
 	}
 
 	if fields, ok := params["fields"]; ok {
 		call = call.Fields(googleapi.Field(fields))
+	} else {
+		call = call.Fields("nextPageToken, files(id, name, mimeType, size, modifiedTime)")
 	}
 
 	if pageSize, ok := params["pageSize"]; ok {
-		size, err := strconv.Atoi(pageSize)
-		if err == nil {
-			call = call.PageSize(int64(size))
+		if size, err := strconv.ParseInt(pageSize, 10, 64); err == nil {
+			call = call.PageSize(size)
 		}
 	}
 
@@ -88,18 +133,14 @@ func (gd *GoogleDrive) SearchFiles(params map[string]string) (*drive.FileList, e
 		call = call.OrderBy(orderBy)
 	}
 
-	if corpora, ok := params["corpora"]; ok {
-		call = call.Corpora(corpora)
-	}
+	call = call.IncludeItemsFromAllDrives(true)
+	call = call.SupportsAllDrives(true)
 
-	if includeAll, ok := params["includeItemsFromAllDrives"]; ok {
-		include, _ := strconv.ParseBool(includeAll)
-		call = call.IncludeItemsFromAllDrives(include)
-	}
-
-	if supportsAll, ok := params["supportsAllDrives"]; ok {
-		supports, _ := strconv.ParseBool(supportsAll)
-		call = call.SupportsAllDrives(supports)
+	if driveID, ok := params["driveId"]; ok {
+		call = call.DriveId(driveID)
+		call = call.Corpora("drive")
+	} else {
+		call = call.Corpora("allDrives")
 	}
 
 	return call.Do()
@@ -150,7 +191,11 @@ func (gd *GoogleDrive) GetPasswordForPath(path string) (string, error) {
 }
 
 func (gd *GoogleDrive) GetFolderIDFromPath(path string) (string, error) {
-	parts := strings.Split(path, "/")
+	if !isValidPath(path) {
+		return "", errors.New("invalid path")
+	}
+
+	parts := splitPath(path)
 	currentID := "root"
 
 	for _, part := range parts {
@@ -158,7 +203,7 @@ func (gd *GoogleDrive) GetFolderIDFromPath(path string) (string, error) {
 			continue
 		}
 
-		query := fmt.Sprintf("'%s' in parents and name = '%s' and mimeType = '%s' and trashed = false", currentID, part, DriveFixedTerms.FolderMimeType)
+		query := formatQuery(currentID, part, DriveFixedTerms.FolderMimeType)
 		fileList, err := gd.service.Files.List().Q(query).Fields("files(id)").Do()
 		if err != nil {
 			return "", err

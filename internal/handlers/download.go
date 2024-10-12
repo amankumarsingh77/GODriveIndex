@@ -7,9 +7,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
+	"sync"
 
-	"github.com/amankumarsingh77/google_drive_index/internal/config"
 	"github.com/amankumarsingh77/google_drive_index/internal/drive"
 	"github.com/amankumarsingh77/google_drive_index/internal/utils"
 	"github.com/gorilla/mux"
@@ -26,14 +25,14 @@ func HandleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !verifyDownloadToken(token, fileID) {
+	if !drive.VerifyDownloadToken(token, fileID) {
 		http.Error(w, "Invalid or expired download token", http.StatusForbidden)
 		return
 	}
 
-	gd, err := drive.NewGoogleDrive(config.Auth.ClientID, config.Auth.ClientSecret, config.Auth.RefreshToken)
+	gd, err := drive.NewGoogleDriveWithServiceAccount()
 	if err != nil {
-		http.Error(w, "Failed to initialize Google Drive client", http.StatusInternalServerError)
+		http.Error(w, "Failed to initialize Google Drive client"+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -70,35 +69,20 @@ func HandleDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", strconv.FormatInt(end-start+1, 10))
 	w.WriteHeader(http.StatusPartialContent)
 
-	_, err = io.CopyN(w, stream, end-start+1)
-	if err != nil {
-		log.Printf("Error streaming file: %v", err)
-	}
-}
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-func verifyDownloadToken(token, fileID string) bool {
+	go func() {
+		defer wg.Done()
+		_, err = io.CopyN(w, stream, end-start+1)
+		if err != nil {
+			if strings.Contains(err.Error(), "write: connection reset by peer") || strings.Contains(err.Error(), "write: broken pipe") {
+				log.Printf("Client disconnected: %v", err)
+			} else {
+				log.Printf("Error streaming file: %v", err)
+			}
+		}
+	}()
 
-	token = strings.Replace(token, " ", "+", -1)
-	firstColonIndex := strings.Index(token, ":")
-	if firstColonIndex == -1 {
-		log.Println("Token format is invalid: no colon found")
-		return false
-	}
-
-	tokenFileID := token[:firstColonIndex]
-	tokenExpiry := token[firstColonIndex+1:]
-
-	expiryTime, err := time.Parse(time.RFC3339, tokenExpiry)
-	if err != nil {
-		return false
-	}
-
-	isValid := tokenFileID == fileID && time.Now().Before(expiryTime)
-	log.Printf("Token is valid: %v", isValid)
-	return isValid
-}
-
-func GenerateDownloadToken(fileID string, duration time.Duration) string {
-	expiry := time.Now().Add(duration).Format(time.RFC3339)
-	return fmt.Sprintf("%s:%s", fileID, expiry)
+	wg.Wait()
 }
