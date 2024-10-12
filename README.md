@@ -15,6 +15,8 @@
    <div align="center">
      A google drive go API to index, search and download files from google drive without download quota limits.
     </div>
+
+    ⚠️ Warning: The quota free download feature is currently still under development. I have not tested it for large number of downloads. Feel free to create an issue if you face any bugs.
 </div>
 
 ## 📋 <a name="table">Table of Contents</a>
