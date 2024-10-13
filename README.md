@@ -92,7 +92,7 @@ Follow these steps to set up the project locally on your machine.
    ```
 
 ***Additional Configuration***
-- **Setup Service Account**: Ensure `serviceAccount.json` is properly configured is if you are using service account for authentication. Follow [this](https://developers.google.com/drive/api/guides/service-accounts) guide to create a service account  and use the `serviceAccount.demo.json` file as reference.
+- **Setup Service Account**: Ensure `serviceAccount.json` is properly configured is if you are using service account for authentication. Follow [this](https://cloud.google.com/iam/docs/service-account-overview) guide to create a service account  and use the `serviceAccount.demo.json` file as reference.
 - **Authentication**: Modify `auth.json` as needed for your authentication setup. Follow  `auth.demo.json` for reference.
 
 **Run the Server**
